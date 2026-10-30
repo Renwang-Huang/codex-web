@@ -1,144 +1,174 @@
-# Codex Web
+<p align="center">
+  <img src="public/favicon.svg" width="72" height="72" alt="Codex Web 标志" />
+</p>
 
-本机 Codex 工作台：在电脑和手机浏览器中查看 `codex`、`codex1`、`codex2` 的进程、会话进展和最终回复，并向可连接的会话下发指令。
+<h1 align="center">Codex Web</h1>
 
-## 功能与状态
+<p align="center">
+  <strong>把本机 Codex 会话带到浏览器。</strong><br />
+  在桌面与手机上查看进展、阅读结果，并通过可用的控制接口接续工作。
+</p>
 
-支持会话和进程观察、Markdown 与代码高亮、手机导航、模型配置、官方归档与恢复，以及具备控制连接时的指令下发、队列和审批。发送结果不确定时不会自动重发。
+<p align="center">
+  <a href="https://github.com/Renwang-Huang/codex-web/actions/workflows/ci.yml"><img src="https://github.com/Renwang-Huang/codex-web/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI 状态" /></a>
+  <a href="package.json"><img src="https://img.shields.io/badge/Node.js-%E2%89%A5%2022-183d36?logo=nodedotjs&logoColor=white" alt="Node.js 22 或更高版本" /></a>
+  <a href="#兼容性"><img src="https://img.shields.io/badge/Platform-Linux-183d36?logo=linux&logoColor=white" alt="Linux 平台" /></a>
+</p>
 
-这是针对 Linux 和特定 Codex 控制协议的个人工作台。CLI **0.164.0** 的真实控制链路有历史验证；2026-10-29 的 **0.165.0** 环境未发现可连接控制接口，因此该环境的发送、队列、审批和中断尚未重新验收。普通终端进程存在不等于控制功能可用，详见 [验收范围](docs/ACCEPTANCE.md)。
+<p align="center">
+  <a href="#快速开始">快速开始</a> ·
+  <a href="#功能概览">功能概览</a> ·
+  <a href="docs/DEPLOYMENT.md">部署指南</a> ·
+  <a href="docs/USAGE.md">使用指南</a> ·
+  <a href="https://github.com/Renwang-Huang/codex-web/issues">反馈问题</a>
+</p>
 
-默认直接运行本机 Node 服务；跨网络访问可选用 **Caddy + OpenSSH 反向转发**。中继服务器提供 HTTPS、静态前端和 API 转发，完整会话、认证密钥及队列保留在本机，中继无需安装 Codex。部署模板及操作步骤见 [部署指南](docs/DEPLOYMENT.md)。
+![Codex Web 桌面界面：多入口会话列表、任务状态与 Markdown 回复](docs/images/workbench-desktop.png)
 
-仓库导航：[文档索引与模块职责](docs/README.md) · [架构与已有方案比较](docs/ARCHITECTURE.md) · [开发贡献](CONTRIBUTING.md) · [安全边界](SECURITY.md) · [第三方依赖](THIRD_PARTY_NOTICES.md)。
+<details>
+<summary>查看手机与深色界面</summary>
 
-## 服务管理（可选）
+<p align="center">
+  <img src="docs/images/workbench-mobile.png" width="320" alt="Codex Web 手机深色界面：会话详情、代码高亮和指令输入" />
+</p>
 
-按部署指南安装 systemd 用户服务后，可使用以下命令；没有安装服务时，直接按下一节运行。托管服务运行期间不要重复执行 `npm start`。
+</details>
 
-```bash
-systemctl --user status codex-web.service codex-web-tunnel.service
-systemctl --user restart codex-web.service
-systemctl --user restart codex-web-tunnel.service
-```
+*截图由真实前端在隔离演示数据下生成，模型、会话、目录和连接状态均为示例。*
 
-要完全停止工作台与公网中继：
+## 为什么做这个项目
 
-```bash
-systemctl --user stop codex-web-tunnel.service codex-web.service
-```
+同时使用多个 Codex 入口时，任务进展、最终回复和待处理请求会分散在不同终端。Codex Web 将同一 Linux 用户下的 `codex`、`codex1`、`codex2` 汇集到一个浏览器工作台，让你在电脑上集中查看，也能从手机跟进。
 
-停止本机服务后，中继前端仍可打开并显示离线状态，无法读取本机信息或执行指令。本机恢复后连接可重建。
+工作台读取本机进程与会话日志，并发现已有的 Codex 控制接口。你可以按当前连接能力查看进展、排队下一轮或继续会话；原有认证、模型提供方与工作目录继续由 Codex 管理。
 
-## 运行
+## 功能概览
 
-需要 Linux、Node.js 22+ 和已经配置好的 Codex CLI。本机实现已针对 Codex CLI **0.164.0** 验证。
+| 你想做的事 | 工作台提供的能力 |
+| --- | --- |
+| 集中查看多个入口 | 按入口、状态或关键词筛选会话，查看相关进程与工作目录 |
+| 跟进正在执行的任务 | 展示公开进展、计划、工具活动与明确的轮次状态；SSE 传递文字增量 |
+| 快速阅读和带走结果 | Markdown、代码高亮、复制原文或代码，集中查看未读最终回复 |
+| 从手机继续查看 | 自适应布局、返回与前进、刷新恢复会话、系统深色主题、唤醒后核对状态 |
+| 继续或管理会话 | 在控制连接可用时，新建、续接、排队、补充、中断，以及处理已同步的审批与问题 |
+| 找回归档内容 | 使用 Codex 官方归档与恢复，运行中或有未处理指令的会话受到保护 |
+| 核对模型与用量 | 显示模型、推理强度及其来源，区分累计 Token 与最近请求信息 |
 
-```bash
+完整的操作说明与发送语义见 [使用指南](docs/USAGE.md)。
+
+## 快速开始
+
+需要 **Linux、Node.js 22+**，以及已经安装并配置好的 Codex CLI。浏览器查看日志与下发指令有不同的接口要求，先阅读下方兼容说明。
+
+> [!IMPORTANT]
+> 控制功能取决于当前 CLI 提供的接口。CLI **0.164.0** 有历史实机验证；最近一次 **0.165.0** 环境检查（2026-10-29）未发现可连接控制接口，该环境的发送、队列、审批和中断尚未重新验收。具体范围见 [验收记录](docs/ACCEPTANCE.md)。
+
+**1. 安装并启动**
+
+```sh
 git clone https://github.com/Renwang-Huang/codex-web.git
 cd codex-web
 npm ci
 npm start
 ```
 
-默认地址是 `http://127.0.0.1:4317`。登录密钥在项目目录中自动生成：
+打开 **http://127.0.0.1:4317**。项目使用原生浏览器模块，安装依赖后即可运行，无需前端构建。
 
-```bash
+**2. 登录工作台**
+
+在另一个终端中进入项目目录，读取首次启动自动生成的访问密钥：
+
+```sh
 cat .local/access-key
 ```
 
-把密钥填入登录页面。密钥文件权限为 `0600`，浏览器通过 `HttpOnly`、`SameSite=Strict` 的会话 Cookie 登录，有效期为 12 小时。密钥不出现在启动日志和 URL 中。
+将密钥填入登录页。它只用于此工作台，权限为 `0600`；浏览器使用 HttpOnly 会话 Cookie，登录有效期为 12 小时。
 
-手机访问同一台电脑：
+**3. 检查当前连接能力**
 
-```bash
-cd codex-web
+```sh
+npm run probe
+```
+
+此命令只读查询已发现的控制接口；没有输出表示没有发现接口。可以先查看历史记录和可识别的终端进展，控制操作需满足下方条件。每个项目目录只运行一个工作台实例；已有 systemd 托管服务时，请使用 [服务管理命令](docs/USAGE.md#服务管理可选)。
+
+## 兼容性
+
+| 会话或环境 | 查看进展 | 可用的控制方式 |
+| --- | --- | --- |
+| 已连接 Unix WebSocket 的 app-server 会话 | 官方状态与本地日志 | 下一轮、排队、补充、中断；处理当前连接收到的审批或问题 |
+| 已连接原生队列的独立终端 | 完整活动日志中的轮次事件 | 可排队下一轮并撤回未接收指令；即时补充和中断在原终端操作 |
+| 未提供兼容控制接口的独立终端 | 进程与可识别的活动日志 | 监控；退出原终端后，还需同入口有可用 app-server 才能由网页续接 |
+| 已离线的历史会话 | 本地日志与结果摘要 | 同入口有可用 app-server 时可续接 |
+
+入口按 `CODEX_HOME` 区分，目前固定为 `~/.codex`、`~/.codex1`、`~/.codex2`。工作台不会自动启动、升级或改造 Codex 控制服务；普通终端进程存在不保证可以下发指令。当前面向单用户 Linux 环境，不支持 Windows、远端 SSH 进程或未知的额外 home。
+
+## 数据与部署
+
+```mermaid
+flowchart LR
+  Browser["电脑 / 手机浏览器"] -->|"本机或局域网 HTTP"| Local["本机 Node.js 工作台"]
+  Browser -->|"可选：HTTPS"| Relay["中继服务器 Caddy"]
+  Relay -->|"API 经 SSH 反向隧道"| Local
+  Local --> Logs["本地 Codex 会话日志"]
+  Local -->|"已有控制接口"| Codex["Codex app-server"]
+```
+
+默认仅监听本机回环地址。跨网络访问可复用 **Caddy + OpenSSH**：中继提供静态前端和 API 转发，Codex 在本机运行。本机不需要公网 IP 或路由器端口映射。配置步骤、更新和回退见 [部署指南](docs/DEPLOYMENT.md)。
+
+- **数据位置**：Codex 的凭据与会话留在各自的 home；工作台密钥、指令台账和去重回执保存在 `.local/`，不进入 Git。
+- **发送语义**：请求编号去重；断连或超时后保留“结果未知”，不自动重发。跨客户端仍可能竞争，需要严格串行时使用同一发送端。
+- **访问边界**：当前使用单用户共享密钥；代理能接触转发内容，这条链路不提供对中继不可见的端到端内容加密。
+
+更多认证、代理与备份细节见 [安全说明](SECURITY.md)。
+
+<details>
+<summary>环境变量与可信局域网访问</summary>
+
+| 变量 | 默认值 | 用途 |
+| --- | --- | --- |
+| `HOST` | `127.0.0.1` | 本机 HTTP 监听地址 |
+| `PORT` | `4317` | HTTP 端口 |
+| `CODEX_WEB_DATA_DIR` | 项目 `.local/` | 访问密钥、状态、审计与去重回执目录 |
+| `PUBLIC_ORIGIN` | 未设置 | 部署 HTTPS 中继时固定公开 Origin |
+| `TRUST_LOOPBACK_PROXY` | 未启用 | 设为 `1` 时信任回环代理的来源和协议信息 |
+
+在可信局域网中，可停止现有实例后执行：
+
+```sh
 HOST=0.0.0.0 npm start
 ```
 
-在同一局域网的手机上打开 `http://电脑的局域网IP:4317`，使用同一密钥登录。`PORT` 可覆盖端口。跨网络可使用已有的私人 VPN 或 HTTPS 反向代理；此项目没有配置公网端口转发。直接 HTTP 适用于可信局域网，不提供传输加密。
+手机打开 `http://电脑的局域网IP:4317`，使用同一密钥登录。直接 HTTP 不提供传输加密，跨网络使用 HTTPS 中继或私人网络。
 
-直接运行时，停止工作台用 `Ctrl+C`；已存在的 Codex 会话继续运行。`npm start` 不会安装开机自启或修改防火墙。
-
-同一项目目录只运行一个工作台实例。更改端口前，请先停止旧实例，避免多个服务同时处理同一指令队列。
-
-## 使用
-
-- **当前**：查看已加载到 app-server 的会话，以及能通过日志文件句柄关联的独立终端会话。
-- **待查看结果**：查看尚未标为已读的最终回复。`本轮完成` 表示一次 Codex 响应结束，不表示整个开发目标已验收。
-- **历史记录**：搜索三个入口的本地会话。按需显示更多，日志摘要有长度上限。
-- **进展**：展示用户消息、Codex 公开进展和计划步骤。没有计划时不生成百分比。
-- **阅读与复制**：助手消息支持 Markdown、代码高亮及分别复制回复原文或代码。HTML 会转义，渲染结果经过白名单净化，不加载回复中的远程图片。主题跟随系统深浅色设置。
-- **手机导航**：选中的会话保存在 URL 片段中，浏览器返回可回到列表，前进或刷新可恢复会话。输入框随内容增高，重新唤醒页面时立即核对状态。
-- **目录与用量**：新建表单提供最近会话目录建议；详情显示日志中记录的累计输入、输出 Token，以及可用时的最近请求用量和窗口上限。累计用量不代表当前上下文占用。
-- **模型与推理强度**：会话卡片及详情显示模型 ID 和推理强度（例如 `gpt-6-astra / xhigh`）。详情标明控制接口、最近一轮日志或新建配置确认等来源；没有记录时明确显示未记录，不把入口默认值当作历史会话实际配置。
-- **新建会话**：选择入口、工作目录、模型及推理强度。选项来自该入口的官方模型列表，强度随模型变化；也可填写上游支持的自定义模型 ID。只为新会话设置模型和强度，不改全局配置、认证或权限。
-- **回收站**：在会话详情点击“删除会话”后，使用 Codex 官方归档功能保留记录。在“回收站”筛选中选中会话，点击“恢复会话”，即可继续使用；恢复不会自动开始任务。这里也会展示 Codex 原生已归档的会话。
-- **最终回复**：展示最近一次最终回复；当前轮运行时，这可能是上一轮结果。
-- **活动与指令**：查看工具活动，以及从此工作台发出的指令、排队状态和错误。
-- **进程观察**：查看同一 Linux 用户下识别出的 Codex 主进程、后台服务、辅助进程和可追踪子进程。不会把完整环境变量或命令行发送给前端。
-
-选中可控制会话后：
-
-1. **下一轮指令**：在空闲会话中开始下一轮；历史会话会先续接。
-2. **完成当前轮后发送**：共享会话使用工作台队列；已连接原生队列的独立终端使用 Codex 自带的持久队列，由同一终端在空闲时接收。可在活动面板撤回尚未接收的指令。
-3. **补充到当前轮**：调用带当前轮编号校验的 `turn/steer`；如果该轮已经结束，拒绝发送。
-4. **中断**：中断当前轮，并撤回该会话未发出的排队指令。
-
-命令和文件变更审批可选择允许本次或拒绝；已同步到此连接的 `requestUserInput` 可填写回答。未支持的请求会提示在原客户端处理，不会自动批准。
-
-回收站使用各入口原有的归档目录：`~/.codex/archived_sessions`、`~/.codex1/archived_sessions`、`~/.codex2/archived_sessions`。工作台只在项目 `.local/state.json` 保存删除时间及新建配置。空白会话尚未持久化轮次配置时，恢复后续接仍保留网页创建时确认的模型和强度。
-
-运行中、独立终端仍持有或存在未处理指令的会话不能直接删除。官方归档可能同时归档子会话，界面会告知子会话数量，并检查后代的运行状态和队列；恢复按会话逐条进行。回收站没有自动清理或永久删除操作，任务工作目录中的文件不受影响。
-
-## 兼容边界
-
-| 会话类型 | 监控 | 下发指令 |
-| --- | --- | --- |
-| 已提供 Unix WebSocket 控制接口的 app-server 会话 | 官方状态 + 本地日志 | 下一轮、排队、补充、中断 |
-| 已连接原生队列的独立终端会话 | 完整活动日志中的轮次事件 + 进程归属 | 可排队下一轮、撤回未接收指令；即时补充与中断在原终端操作 |
-| 没有共享控制接口且不支持原生队列的独立终端 | 进程与活动日志；缺少轮次证据时状态待确认 | 退出原终端后，再由网页续接 |
-| 不再运行的历史会话 | 本地日志与结果摘要 | 同入口存在可用 app-server 时可续接 |
-| 只有后台服务、没有任务会话 | 进程树中展示 | 在对应入口新建会话 |
-
-三个入口按 `CODEX_HOME` 区分，不能按二进制名称区分：`codex1` 和 `codex2` 是 shell 函数，实际进程也可能名为 `codex`。工作台连接已有服务，不覆盖现有认证、模型、MCP 或权限配置，不自动启动、更新或终止这些服务。
-
-如果某个入口没有控制服务，先用 `npm run probe` 检查当前 CLI 是否提供本项目支持的 app-server Unix WebSocket 接口；没有输出表示未发现接口。仅启动普通终端不保证生成控制连接。工作台不自动为其他 CLI 版本启动或改造控制服务。当前实现不支持多用户、Windows、容器 PID 命名空间外的进程、SSH 远端进程和未知的额外 `CODEX_HOME`。
-
-**发送语义**：工作台在发出请求前保存指令状态，重复提交同一请求编号会去重。连接中断、响应超时或服务在发送期间退出时，指令保留为“结果未知”，不会自动重发。原生队列可通过同一消息编号的队列记录或终端接收回执恢复确定状态；仅从队列消失不能证明发送成功。共享会话的工作台队列需要本服务在线才能派发；已成功提交到原生队列的指令由 Codex 终端继续接收。
-
-**指令历史**：`state.json` 保留最近 100 条已下发、失败或撤回的完整指令，以及全部未解决记录。更早的已结束指令转为 `.local/command-receipts/` 中不含正文的请求指纹和状态，用于阻止旧请求重复执行；去重凭据不自动删除，备份本地状态时应一并保留该目录。
-
-**共享客户端竞争**：`turn/start` 没有“仅当上一轮仍为空闲”的原子前置条件。工作台发送前会再次检查状态，但原终端和网页在同一瞬间发消息仍可能发生竞争，服务端也可能把消息合并入当前轮。需要严格按轮次串行时，请只从一个客户端发送指令。工作台不会向未知终端注入按键。
+</details>
 
 ## 开发与验证
 
-```bash
-npm test                 # 状态解析、去重、断连及队列回归
-npm run probe            # 只读探测现有控制接口及已加载会话
-npm run test:browser     # 登录与桌面/手机交互；发送行为使用模拟会话
-npm run test:review-browser # 隔离 HTTP/SSE 模拟：流量、重复发送、Markdown、复制、手机导航与 Cookie 反例
-# 以下脚本会执行真实模型调用，不在 CI 中运行
-node scripts/smoke.mjs   # 三个真实入口的最小回复测试，会创建并归档专门测试会话
-node scripts/api-smoke.mjs # 经工作台 HTTP API 验证新建、首次发送、去重和下一轮排队
-node scripts/session-management-check.mjs # 专用新会话：选模型/强度、删除、恢复、真实回复与桌面/手机验收
-# 专用独立测试终端需在 .local/native-queue-workspace 内启动；只向显式指定的测试会话发送固定回复指令
-TEST_THREAD_ID=专用测试会话ID node scripts/native-queue-check.mjs
+```sh
+npm test                     # 隔离服务端回归
+npm run test:review-browser   # 独立 HTTP/SSE 浏览器回归
 ```
 
-浏览器检查使用本机 Microsoft Edge。其他 Chromium 路径可由 `PLAYWRIGHT_EXECUTABLE_PATH` 指定。真实入口测试会消耗少量模型用量，不会对用户已有会话发送消息。验证记录与截图保存在 `.local/checks/`。
+GitHub Actions 在 **Node.js 22、24** 上运行自动化测试，并独立执行 Chromium 浏览器回归。这些测试不调用真实模型；真实会话和服务恢复脚本需人工触发，行为范围见 [贡献说明](CONTRIBUTING.md)。
 
-所有项目源代码、依赖、文档、密钥、指令队列和验证产物都在本目录。Codex 自己已有的配置、凭据、会话记录继续由 Codex 保存在各自的原始 `CODEX_HOME`，本项目不会复制这些凭据。
+最近一次验证包含 **41 项自动化测试、6 组浏览器回归**；它们覆盖状态、去重、队列、认证、Markdown 与手机交互，不替代当前 CLI 环境的真实控制链路验收。
 
-```
-server/             HTTP 认证、进程发现、会话索引、官方 RPC、队列
-public/             自适应网页，无前端构建步骤
-scripts/            只读探测、浏览器验收、真实入口测试
-test/               自动化回归
-docs/               调研、架构、验收说明
-.local/             本地运行状态和验证产物（不进入版本控制）
-```
+## 文档导航
 
-实现依据与既有方案比较见 [调研与架构](docs/ARCHITECTURE.md)，本轮验证范围见 [验收记录](docs/ACCEPTANCE.md)。
+| 文档 | 内容 |
+| --- | --- |
+| [使用指南](docs/USAGE.md) | 页面操作、队列、归档恢复、服务管理和发送边界 |
+| [部署指南](docs/DEPLOYMENT.md) | HTTPS、受限反向隧道、配置核验、更新与回退 |
+| [架构与方案比较](docs/ARCHITECTURE.md) | 数据来源、控制协议和已有方案取舍 |
+| [验收记录](docs/ACCEPTANCE.md) | 自动化、历史实机结果与未覆盖项 |
+| [文档与代码索引](docs/README.md) | 模块职责、维护资料和历史材料 |
+| [参与开发](CONTRIBUTING.md) | 测试、截图生成和提交约定 |
 
-2026-10-28 审查迭代的处理记录见 [REVIEW_RESPONSE.md](docs/REVIEW_RESPONSE.md)。2026-10-29 已完成前端和中继发布验证：41 项自动化测试、6 组隔离浏览器回归及公网静态资源核验通过。个人服务器地址、密钥和完整部署产物不随源码发布；该次发布没有重新验收真实模型控制链路。
+功能建议和复现问题可提交到 [GitHub Issues](https://github.com/Renwang-Huang/codex-web/issues)；涉及凭据或安全漏洞时，请使用 [私密漏洞报告](https://github.com/Renwang-Huang/codex-web/security/advisories/new)，并参考 [SECURITY.md](SECURITY.md)。
+
+## 参考与许可
+
+README 的信息组织参考了 [OpenCode](https://github.com/anomalyco/opencode)、[HAPI](https://github.com/tiann/hapi)、[Open WebUI](https://github.com/open-webui/open-webui) 与 [Uptime Kuma](https://github.com/louislam/uptime-kuma)，采用清晰的项目定位、界面预览、快速开始和分层文档。
+
+项目自有代码尚未指定开源许可证。Marked、DOMPurify、Highlight.js 等组件按各自许可证提供，详见 [第三方依赖声明](THIRD_PARTY_NOTICES.md)。

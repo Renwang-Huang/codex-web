@@ -21,6 +21,14 @@ PLAYWRIGHT_EXECUTABLE_PATH="$(node --input-type=module -e 'import {chromium} fro
 
 GitHub Actions 在 Node.js 22、24 上执行 `npm ci` 与自动化测试，并在独立任务中安装 Chromium 执行隔离浏览器回归。CI 不安装 Codex、不读取用户认证、不建立公网隧道，也不启动真实模型测试。
 
+## 更新 README 截图
+
+```sh
+node scripts/readme-preview.mjs
+```
+
+脚本使用当前前端及固定的演示会话生成 `docs/images/` 下的桌面、手机截图，不读取登录密钥、实际会话或模型接口。浏览器路径同样支持 `PLAYWRIGHT_EXECUTABLE_PATH`。界面变化后重新生成，并检查图片；截图中的模型、目录和状态都属于演示数据。
+
 ## 实机脚本
 
 | 命令或脚本 | 行为 |

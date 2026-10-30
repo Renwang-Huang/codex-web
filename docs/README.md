@@ -4,7 +4,8 @@
 
 | 任务 | 文档 |
 | --- | --- |
-| 安装、登录、会话操作和兼容边界 | [项目 README](../README.md) |
+| 功能概览与快速开始 | [项目 README](../README.md) |
+| 会话操作、服务管理、发送语义和兼容边界 | [使用指南](USAGE.md) |
 | 部署 HTTPS、反向隧道和用户服务 | [部署指南](DEPLOYMENT.md) |
 | 理解数据来源、控制协议及已有方案取舍 | [架构决策](ARCHITECTURE.md) |
 | 区分自动化、历史实机结果及尚未验证的能力 | [验收记录](ACCEPTANCE.md) |
@@ -28,6 +29,7 @@
 | `public/vendor/` | 锁定版本的浏览器依赖与上游许可证，由 `npm ci` 同步 |
 | `test/` | 使用临时目录与模拟 RPC 的服务端回归 |
 | `scripts/review-browser-check.mjs` | 不依赖登录或真实模型的 HTTP/SSE 浏览器回归 |
+| `scripts/readme-preview.mjs` | 使用隔离演示数据为 README 生成真实界面截图 |
 | `scripts/` 其他脚本 | 只读探测、人工触发的实机测试和部署辅助；详见贡献说明 |
 | `deploy/` | Caddy 示例、服务器安装与只读核验脚本 |
 | `.github/workflows/ci.yml` | Linux 上的 Node.js 测试与隔离浏览器回归 |
