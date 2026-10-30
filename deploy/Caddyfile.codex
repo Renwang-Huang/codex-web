@@ -1,0 +1,22 @@
+codex.example.com {
+    encode zstd gzip
+    header {
+        Cache-Control "no-store"
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer"
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+    }
+    handle /api/* {
+        reverse_proxy 127.0.0.1:14317 {
+            flush_interval -1
+            header_up Host codex.example.com
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-Host codex.example.com
+        }
+    }
+    handle {
+        root * /opt/codex-web/public
+        file_server
+    }
+}

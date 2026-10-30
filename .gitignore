@@ -1,0 +1,13 @@
+node_modules/
+.local/
+coverage/
+*.log
+__pycache__/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_ed25519*
+id_rsa*
+.DS_Store
